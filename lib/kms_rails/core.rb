@@ -9,13 +9,13 @@ module KmsRails
     attr_reader :context_key, :context_value
 
     def initialize(key_id:, msgpack: false, context_key: nil, context_value: nil)
-      @base_key_id = key_id
+      @key_id = key_id
       @context_key = context_key
       @context_value = context_value
       @msgpack = msgpack
     end
 
-    def encrypt(data)
+    def encrypt(data, key_id)
       return nil if data.nil?
 
       data_key = aws_generate_data_key(key_id)
@@ -32,9 +32,9 @@ module KmsRails
       }
     end
 
-    def encrypt64(data)
+    def encrypt64(data, key_id)
       return nil if data.nil?
-      self.class.to64(encrypt(data))
+      self.class.to64(encrypt(data, key_id))
     end
 
     def decrypt(data_obj)
@@ -53,21 +53,6 @@ module KmsRails
     def decrypt64(data_obj)
       return nil if data_obj.nil?
       decrypt( self.class.from64(data_obj) )
-    end
-
-    def key_id
-      case @base_key_id
-      when Proc
-        @base_key_id.call
-      when String
-        if @base_key_id =~ /\A\w{8}-\w{4}-\w{4}-\w{4}-\w{12}\z/ || @base_key_id.start_with?('alias/') # if UUID or direct alias
-          KmsRails.configuration.arn_prefix + @base_key_id
-        else
-          KmsRails.configuration.arn_prefix + 'alias/' + KmsRails.configuration.alias_prefix + @base_key_id
-        end
-      else
-        raise RuntimeError, 'Only Proc and String arguments are supported'
-      end
     end
 
     def self.shred_string(str)

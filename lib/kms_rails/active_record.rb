@@ -27,7 +27,7 @@ module KmsRails
           end
 
           set_retained(field, data) if retain
-          encrypted_data = enc.encrypt(data)
+          encrypted_data = enc.encrypt(data, evaluate_key_id(key_id, self))
           data = nil
           
           store_hash(field, encrypted_data)
@@ -65,6 +65,21 @@ module KmsRails
     module InstanceMethods
       def store_hash(field, data)
         self["#{field}_enc"] = data.to_msgpack
+      end
+
+      def evaluate_key_id(base_key_id, object)
+        case base_key_id
+        when Proc
+          object.instance_eval &base_key_id
+        when String
+          if base_key_id =~ /\A\w{8}-\w{4}-\w{4}-\w{4}-\w{12}\z/ || base_key_id.start_with?('alias/') # if UUID or direct alias
+            KmsRails.configuration.arn_prefix + base_key_id
+          else
+            KmsRails.configuration.arn_prefix + 'alias/' + KmsRails.configuration.alias_prefix + base_key_id
+          end
+        else
+          raise RuntimeError, 'Only Proc and String arguments are supported'
+        end
       end
 
       def get_hash(field)
