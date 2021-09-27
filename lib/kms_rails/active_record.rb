@@ -10,7 +10,7 @@ module KmsRails
     end
     
     module ClassMethods
-      def kms_attr(field, key_id:, retain: false, msgpack: false, context_key: nil, context_value: nil)
+      def kms_attr(field, key_id:, retain: false, msgpack: false, context_key: nil, context_value: nil, aws_client: nil)
         include InstanceMethods
 
         real_field = "#{field}_enc"
@@ -27,7 +27,7 @@ module KmsRails
           end
 
           set_retained(field, data) if retain
-          encrypted_data = enc.encrypt(data, evaluate_key_id(key_id, self))
+          encrypted_data = enc.encrypt(data, evaluate_key_id(key_id, self), evaluate_aws_client(aws_client, self))
           data = nil
           
           store_hash(field, encrypted_data)
@@ -79,6 +79,19 @@ module KmsRails
           end
         else
           raise RuntimeError, 'Only Proc and String arguments are supported'
+        end
+      end
+
+      def evaluate_aws_client(base_value, object)
+        case base_value
+        when nil
+          nil
+        when Proc
+          object.instance_eval &base_value
+        when Aws::S3::Client
+          base_value
+        else
+          raise RuntimeError, 'Only Proc and Aws::S3::Client arguments are supported'
         end
       end
 

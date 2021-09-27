@@ -15,10 +15,10 @@ module KmsRails
       @msgpack = msgpack
     end
 
-    def encrypt(data, key_id)
+    def encrypt(data, key_id, aws_client = nil)
       return nil if data.nil?
 
-      data_key = aws_generate_data_key(key_id)
+      data_key = aws_generate_data_key(key_id, aws_client)
       data = data.to_msgpack if @msgpack
       encrypted = encrypt_attr(data, data_key.plaintext)
 
@@ -37,12 +37,12 @@ module KmsRails
       self.class.to64(encrypt(data, key_id))
     end
 
-    def decrypt(data_obj)
+    def decrypt(data_obj, aws_client = nil)
       return nil if data_obj.nil?
 
       decrypted = decrypt_attr(
         data_obj['blob'],
-        aws_decrypt_key(data_obj['key']),
+        aws_decrypt_key(data_obj['key'], aws_client),
         data_obj['iv']
       )
 
@@ -106,19 +106,19 @@ module KmsRails
       {iv: iv, data: cipher.update(data.to_s) + cipher.final}
     end
 
-    def aws_decrypt_key(key)
+    def aws_decrypt_key(key, aws_client)
       args = {ciphertext_blob: key}
-      aws_kms.decrypt(**apply_context(args, @context_key, @context_value)).plaintext
+      aws_kms(aws_client).decrypt(**apply_context(args, @context_key, @context_value)).plaintext
     end
 
-    def aws_kms
-      KmsRails.configuration.kms_client ||
+    def aws_kms(client)
+      client || KmsRails.configuration.kms_client ||
         (@aws_kms ||= Aws::KMS::Client.new)
     end
 
-    def aws_generate_data_key(key_id)
+    def aws_generate_data_key(key_id, aws_client)
       args = {key_id: key_id, key_spec: 'AES_256'}
-      aws_kms.generate_data_key(**apply_context(args, @context_key, @context_value))
+      aws_kms(aws_client).generate_data_key(**apply_context(args, @context_key, @context_value))
     end
   end
 end
