@@ -49,7 +49,7 @@ module KmsRails
           if retain && (plaintext = get_retained(field))
             plaintext
           else
-            plaintext = enc.decrypt(hash)
+            plaintext = enc.decrypt(hash, evaluate_aws_client(aws_client, self))
             set_retained(field, plaintext) if retain
             plaintext
           end
