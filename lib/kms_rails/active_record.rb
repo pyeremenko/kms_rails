@@ -88,10 +88,10 @@ module KmsRails
           nil
         when Proc
           object.instance_eval &base_value
-        when Aws::S3::Client
+        when Aws::KMS::Client
           base_value
         else
-          raise RuntimeError, 'Only Proc and Aws::S3::Client arguments are supported'
+          raise RuntimeError, 'Only Proc and Aws::KMS::Client arguments are supported'
         end
       end
 
